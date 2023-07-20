@@ -47,13 +47,18 @@ in the `auth-sources' file."
   :type 'boolean
   :group 'org-ai)
 
+(defcustom org-ai-openai-api-host "api.openai.com"
+  "The hostname to use to access the OpenAI API."
+  :type 'string
+  :group 'org-ai)
+
 (defun org-ai--openai-get-token ()
   "Try to get the openai token, either from
 `org-ai-openai-api-token' or from auth-source."
   (or org-ai-openai-api-token
       (when org-ai-use-auth-source
         (require 'auth-source)
-        (auth-source-pick-first-password :host "api.openai.com" :user "org-ai"))
+        (auth-source-pick-first-password :host org-ai-openai-api-host :user "org-ai"))
       (error "Please set `org-ai-openai-api-token' to your OpenAI API token or setup auth-source (see org-ai readme)")))
 
 (defcustom org-ai-default-completion-model "text-davinci-003"
@@ -276,7 +281,9 @@ model to use. `MAX-TOKENS' is the maximum number of tokens to
 generate. `TEMPERATURE' is the temperature of the distribution.
 `TOP-P' is the top-p value. `FREQUENCY-PENALTY' is the frequency
 penalty. `PRESENCE-PENALTY' is the presence penalty."
-  (let* ((url-request-extra-headers `(("Authorization" . ,(encode-coding-string (string-join `("Bearer" ,(org-ai--openai-get-token)) " ") 'utf-8))
+  (let* ((url-request-extra-headers `(,(if (equal "api.openai.com" org-ai-openai-api-host)
+                                         `("Authorization" . ,(encode-coding-string (string-join `("Bearer" ,(org-ai--openai-get-token)) " ") 'utf-8))
+                                         `("api-key" . ,(org-ai--openai-get-token)))
                                       ("Content-Type" . "application/json")))
          (url-request-method "POST")
          (endpoint (if messages org-ai-openai-chat-endpoint org-ai-openai-completion-endpoint))
